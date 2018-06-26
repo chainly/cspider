@@ -1,0 +1,13 @@
+#pip install djangorestframework  -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
+django
+djangorestframework
+pygments
+coreapi
+
+
+scrapy
+# for js
+scrapy-splash
+splash
+# https://github.com/ghtmtt/DataPlotly/issues/47
+PyQt5==5.9
