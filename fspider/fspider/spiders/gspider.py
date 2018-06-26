@@ -1,5 +1,6 @@
+import copy
 import scrapy
-import:
+import scrapy_splash
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
 
@@ -8,36 +9,40 @@ class TestSpider(scrapy.Spider):
     #start_urls = ['http://www.ccgp.gov.cn/cggg/dfgg/']
     
     def start_requests(self):
-        meta  = { 'splash': {
-        'args': {
-            # set rendering arguments here
-            'html': 1,
-            #'png': 1,
+        meta = {
+            'splash': {
+                'args': {
+                    # set rendering arguments here
+                    'html': 1,
+                    # 'png': 1,
 
-            # 'url' is prefilled from request url
-            # 'http_method' is set to 'POST' for POST requests
-            # 'body' is set to request body for POST requests
-            'dont_process_response' : True
-        },
+                    # 'url' is prefilled from request url
+                    # 'http_method' is set to 'POST' for POST requests
+                    # 'body' is set to request body for POST requests
+                    'dont_process_response': True
+                },
 
-        # optional parameters
-        'endpoint': 'render.html',  # optional; default is render.json
-        #'splash_url': '<url>',      # optional; overrides SPLASH_URL
-        'slot_policy': scrapy_splash.SlotPolicy.PER_DOMAIN,
-        'splash_headers': {},       # optional; a dict with headers sent to Splash
-        'dont_process_response': True, # optional, default is False
-        'dont_send_headers': True,  # optional, default is False
-        'magic_response': False,    # optional, default is True
-    }
-    }
-    yield scrapy.Request('http://www.ccgp.gov.cn/cggg/dfgg/')
-    yield scrapy.Request('http://www.bjrbj.gov.cn/csibiz/home/static/catalogs/catalog_75200/75200.html')
+                # optional parameters
+                'endpoint': 'render.html',  # optional; default is render.json
+                # 'splash_url': '<url>',      # optional; overrides SPLASH_URL
+                'slot_policy': scrapy_splash.SlotPolicy.PER_DOMAIN,
+                'splash_headers': {},  # optional; a dict with headers sent to Splash
+                'dont_process_response': True,  # optional, default is False
+                'dont_send_headers': True,  # optional, default is False
+                'magic_response': False,  # optional, default is True
+            }
+        }
+        # https://github.com/scrapy/scrapy/issues/2949
+        # `SplashDeduplicateArgsMiddleware._process_request: request.meta['splash']['xx'] = yy`
+        meta_deepcopy = copy.deepcopy(meta)
+        yield scrapy.Request('http://www.ccgp.gov.cn/cggg/dfgg/', meta=meta_deepcopy)
+        meta_deepcopy = copy.deepcopy(meta)
+        yield scrapy.Request('http://www.bjrbj.gov.cn/csibiz/home/static/catalogs/catalog_75200/75200.html', meta=meta_deepcopy)
 
     def parse(self, response):
         print(list(response.__dict__.keys()))
         print( response.xpath('//a/text()').extract() , response.xpath('//a[@class="next"]'))
-        print( response.xpath('//a/text()').extract())
-    
+        print( response.xpath('//a[contains(./text(), "下一页")]').extract())
     
 
 class MySpider(CrawlSpider):
