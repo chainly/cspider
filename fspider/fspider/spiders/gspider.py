@@ -19,7 +19,6 @@ class TestSpider(scrapy.Spider):
                     # 'url' is prefilled from request url
                     # 'http_method' is set to 'POST' for POST requests
                     # 'body' is set to request body for POST requests
-                    'dont_process_response': True
                 },
 
                 # optional parameters
@@ -27,7 +26,8 @@ class TestSpider(scrapy.Spider):
                 # 'splash_url': '<url>',      # optional; overrides SPLASH_URL
                 'slot_policy': scrapy_splash.SlotPolicy.PER_DOMAIN,
                 'splash_headers': {},  # optional; a dict with headers sent to Splash
-                'dont_process_response': True,  # optional, default is False
+                # don't set to be True, ensure `_url` is not splash_url 
+                #'dont_process_response': True,  # optional, default is False
                 'dont_send_headers': True,  # optional, default is False
                 'magic_response': False,  # optional, default is True
             }
@@ -38,12 +38,47 @@ class TestSpider(scrapy.Spider):
         yield scrapy.Request('http://www.ccgp.gov.cn/cggg/dfgg/', meta=meta_deepcopy)
         meta_deepcopy = copy.deepcopy(meta)
         yield scrapy.Request('http://www.bjrbj.gov.cn/csibiz/home/static/catalogs/catalog_75200/75200.html', meta=meta_deepcopy)
+        meta_deepcopy = copy.deepcopy(meta)
+        yield scrapy.Request('http://www.jxsggzy.cn/web/jyxx/002006/002006001/3.html', meta=meta_deepcopy)
+
 
     def parse(self, response):
-        print(list(response.__dict__.keys()))
-        print( response.xpath('//a/text()').extract() , response.xpath('//a[@class="next"]'))
-        print( response.xpath('//a[contains(./text(), "下一页")]').extract())
-    
+        #print(response.__dict__)
+        # print( response.xpath('//a/text()').extract() , response.xpath('//a[@class="next"]'))
+        # print( response.xpath('//a[contains(./text(), "下一页")]').extract())
+        for slink in response.xpath('//a'):
+            #print(slink, slink.root, dir(slink.root), list(slink.root.keys()))
+            """
+            <Selector xpath='//a' data='<a href="#">002</a>'>
+            <Element a at 0x11319fe58>
+            [
+            'addnext', 'addprevious', 'append', 'attrib', 'base', 'base_url', 'body', 'classes', 'clear', 'cssselect', 'drop_tag', 
+            'drop_tree', 'extend', 'find', 'find_class', 'find_rel_links', 'findall', 'findtext', 'forms', 'get', 'get_element_by_id', 
+            'getchildren', 'getiterator', 'getnext', 'getparent', 'getprevious', 'getroottree', 'head', 'index', 'insert', 'items', 'iter', 
+            'iterancestors', 'iterchildren', 'iterdescendants', 'iterfind', 'iterlinks', 'itersiblings', 'itertext', 'keys', 'label', 
+            'make_links_absolute', 'makeelement', 'nsmap', 'prefix', 'remove', 'replace', 'resolve_base_href', 'rewrite_links', 'set', 'sourceline', 
+            'tag', 'tail', 'text', 'text_content', 'values', 'xpath']
+            ['href', 'class']
+            """
+            elink = slink.root
+            text = elink.text
+            href = elink.get("href")
+            if not href or not text or len(text) <= 10:
+                continue
+            print(text, href)
+            """安徽阜阳市加快推进养老服务体系建设 http://www.ccgp.gov.cn/gpsr/zhxx/df/201806/t20180626_10162269.htm
+            联系我们 /contact.shtml
+            意见反馈 mailto:feedback@ccgp.gov.cn
+            """
+            req = response.follow(slink, callback=self.content_parser, errback=self.errback)
+            req.meta.pop('splash' , None)
+            yield req
+
+    def errback(self, failure):
+        print(failure.request.url, failure, failure.getTraceback())
+
+    def content_parser(self, response):
+        print(response.url, response.xpath('//title').extract())
 
 class MySpider(CrawlSpider):
     name = 'test1'
