@@ -31,20 +31,41 @@ class SnippetSerializer(serializers.Serializer):
         return instance
     
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import password_changed
 
 class UserSerializer(serializers.ModelSerializer):
     snippets = serializers.PrimaryKeyRelatedField(many=True, queryset=Snippet.objects.all())
 
+    def update(self, instance, validated_data):
+        """Only change password in PUT method"""
+        password_changed(validated_data.password, instance)
+        return self.list(instance.pk)
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'snippets')
+        #fields = ('id', 'username', 'password', 'snippets')
+        fields = '__all__'
         
-from m.models import Webpage
+from m.models import Webpage, Crawlpage, Keyword
+
+class CrawlpageSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Crawlpage
+        #fields = '__all__'
+        #fields = ('id', 'site', 'code', 'status')
+        exclude = ('highlighted',)
+
 
 class WebpageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Webpage
-        #fields = '__all__'
-        #fields = ('id', 'site', 'code', 'status')
-        exclude = ('highlighted',)
+        fields = '__all__'
+
+
+class KeywordSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Keyword
+        fields = '__all__'

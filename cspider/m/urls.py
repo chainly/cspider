@@ -57,7 +57,9 @@ from m import views
 router = DefaultRouter()
 router.register(r'snippets', views.SnippetViewSet)
 router.register(r'users', views.UserViewSet)
+router.register(r'crawlpage', views.CrawlpageViewSet)
 router.register(r'webpage', views.WebpageViewSet)
+router.register(r'keyword', views.KeywordViewSet)
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [

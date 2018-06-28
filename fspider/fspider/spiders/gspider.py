@@ -3,6 +3,7 @@ import scrapy
 import scrapy_splash
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
+from fspider.models import Crawlpage, Webpage
 
 class TestSpider(scrapy.Spider):
     name = 'test2'
@@ -32,18 +33,24 @@ class TestSpider(scrapy.Spider):
         }
     }
 
-    def get_splash_meta(self):
-        return copy.deepcopy(self.splash_meta)
+    def get_splash_meta(self, **kwargs):
+        assert 'splash' not in kwargs, 'splash keyword not allowed!'
+
+        meta = copy.deepcopy(self.splash_meta)
+        meta.update(kwargs.items())
+        return meta
     
     def start_requests(self):
         # https://github.com/scrapy/scrapy/issues/2949
         # `SplashDeduplicateArgsMiddleware._process_request: request.meta['splash']['xx'] = yy`
-        yield scrapy.Request('http://www.ccgp.gov.cn/cggg/dfgg/', meta=self.get_splash_meta())
-        yield scrapy.Request('http://www.bjrbj.gov.cn/csibiz/home/static/catalogs/catalog_75200/75200.html', meta=self.get_splash_meta())
-        yield scrapy.Request('http://www.jxsggzy.cn/web/jyxx/002006/002006001/3.html', meta=self.get_splash_meta())
-
+        #yield scrapy.Request('http://www.ccgp.gov.cn/cggg/dfgg/', meta=self.get_splash_meta())
+        #yield scrapy.Request('http://www.bjrbj.gov.cn/csibiz/home/static/catalogs/catalog_75200/75200.html', meta=self.get_splash_meta())
+        #yield scrapy.Request('http://www.jxsggzy.cn/web/jyxx/002006/002006001/3.html', meta=self.get_splash_meta())
+        for item in Crawlpage.objects.all():
+            yield scrapy.Request(item.site, meta=self.get_splash_meta(django_item=item))
 
     def parse(self, response):
+        django_item = response.meta.get('django_item', None)
         #print(response.__dict__)
         # print( response.xpath('//a/text()').extract() , response.xpath('//a[@class="next"]'))
         # print( response.xpath('//a[contains(./text(), "下一页")]').extract())
@@ -71,7 +78,7 @@ class TestSpider(scrapy.Spider):
                 print('next:', href, text)
                 # 2018-06-28 16:10:59 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://www.ccgp.gov.cn/cggg/dfgg/index_1.htm> (referer: http://www.ccgp.gov.cn/cggg/dfgg/)
                 # @TODO: anyway use it directly!?
-                req = response.follow(slink, callback=self.parse, errback=self.errback, meta=self.get_splash_meta())
+                req = response.follow(slink, callback=self.parse, errback=self.errback, meta=self.get_splash_meta(django_item=django_item))
                 #print(req.meta)
                 #req.meta.pop('splash' , None)
                 yield req
@@ -84,8 +91,12 @@ class TestSpider(scrapy.Spider):
             联系我们 /contact.shtml
             意见反馈 mailto:feedback@ccgp.gov.cn
             """
-            req = response.follow(slink, callback=self.content_parser, errback=self.errback)
-            req.meta.pop('splash' , None)
+            # *response.request.meta is response.meta*
+            req = response.follow(slink, callback=self.content_parser, errback=self.errback, meta={"django_item": django_item})
+            #req.meta.pop('splash' , None)
+            #print(req.meta)
+            #import sys
+            #sys.exit()
             yield req
 
     def errback(self, failure):
@@ -93,6 +104,13 @@ class TestSpider(scrapy.Spider):
 
     def content_parser(self, response):
         print(response.url, response.xpath('//title').extract())
+        new = Webpage()
+        new.site = response.url.strip()
+        new.title = response.xpath('//title/text()').extract() \
+                + response.xpath('//h1/text()').extract() \
+                + response.xpath('//h2/text()').extract()
+        new.crawled = response.meta.get('django_item', None)
+        new.save()
 
 
 class MySpider(CrawlSpider):

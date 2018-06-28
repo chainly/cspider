@@ -38,10 +38,13 @@ class UserDetail(generics.RetrieveAPIView):
 
 from rest_framework import viewsets
     
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+#class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     """
     This viewset automatically provides `list` and `detail` actions.
     """
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,
+                          IsOwnerOrReadOnly,)
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
@@ -94,10 +97,10 @@ class SnippetViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
         
 
-from m.models import Webpage
-from m.serializers import WebpageSerializer
+from m.models import Webpage, Crawlpage, Keyword
+from m.serializers import CrawlpageSerializer, WebpageSerializer, KeywordSerializer
 
-class WebpageViewSet(viewsets.ModelViewSet):
+class CrawlpageViewSet(viewsets.ModelViewSet):
     """
     *This will be shown as description on api*
     This viewset automatically provides `list`, `create`, `retrieve`,
@@ -105,8 +108,8 @@ class WebpageViewSet(viewsets.ModelViewSet):
 
     #Additionally we also provide an extra `highlight` action.
     """
-    queryset = Webpage.objects.all()
-    serializer_class = WebpageSerializer
+    queryset = Crawlpage.objects.all()
+    serializer_class = CrawlpageSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,
                           IsOwnerOrReadOnly,)
 
@@ -117,3 +120,23 @@ class WebpageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+class WebpageViewSet(viewsets.ModelViewSet):
+    """all crawled page\n
+    *WARNING*\n
+    Also provide `truncate` action to truncate table
+    """
+
+    queryset = Webpage.objects.all()
+    serializer_class = WebpageSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    
+    @action(detail=False, renderer_classes=[renderers.StaticHTMLRenderer])
+    def truncate(self, request, *args, **kwargs):
+        return Response(repr(self.queryset.delete()))
+
+class KeywordViewSet(viewsets.ModelViewSet):
+    queryset = Keyword.objects.all()
+    serializer_class = KeywordSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    
