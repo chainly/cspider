@@ -7,39 +7,40 @@ from scrapy.linkextractors import LinkExtractor
 class TestSpider(scrapy.Spider):
     name = 'test2'
     #start_urls = ['http://www.ccgp.gov.cn/cggg/dfgg/']
+
+    splash_meta = {
+        'splash': {
+            'args': {
+                # set rendering arguments here
+                'html': 1,
+                # 'png': 1,
+
+                # 'url' is prefilled from request url
+                # 'http_method' is set to 'POST' for POST requests
+                # 'body' is set to request body for POST requests
+            },
+
+            # optional parameters
+            'endpoint': 'render.html',  # optional; default is render.json
+            # 'splash_url': '<url>',      # optional; overrides SPLASH_URL
+            'slot_policy': scrapy_splash.SlotPolicy.PER_DOMAIN,
+            'splash_headers': {},  # optional; a dict with headers sent to Splash
+            # don't set to be True, ensure `_url` is not splash_url 
+            #'dont_process_response': True,  # optional, default is False
+            'dont_send_headers': True,  # optional, default is False
+            'magic_response': False,  # optional, default is True
+        }
+    }
+
+    def get_splash_meta(self):
+        return copy.deepcopy(self.splash_meta)
     
     def start_requests(self):
-        meta = {
-            'splash': {
-                'args': {
-                    # set rendering arguments here
-                    'html': 1,
-                    # 'png': 1,
-
-                    # 'url' is prefilled from request url
-                    # 'http_method' is set to 'POST' for POST requests
-                    # 'body' is set to request body for POST requests
-                },
-
-                # optional parameters
-                'endpoint': 'render.html',  # optional; default is render.json
-                # 'splash_url': '<url>',      # optional; overrides SPLASH_URL
-                'slot_policy': scrapy_splash.SlotPolicy.PER_DOMAIN,
-                'splash_headers': {},  # optional; a dict with headers sent to Splash
-                # don't set to be True, ensure `_url` is not splash_url 
-                #'dont_process_response': True,  # optional, default is False
-                'dont_send_headers': True,  # optional, default is False
-                'magic_response': False,  # optional, default is True
-            }
-        }
         # https://github.com/scrapy/scrapy/issues/2949
         # `SplashDeduplicateArgsMiddleware._process_request: request.meta['splash']['xx'] = yy`
-        meta_deepcopy = copy.deepcopy(meta)
-        yield scrapy.Request('http://www.ccgp.gov.cn/cggg/dfgg/', meta=meta_deepcopy)
-        meta_deepcopy = copy.deepcopy(meta)
-        yield scrapy.Request('http://www.bjrbj.gov.cn/csibiz/home/static/catalogs/catalog_75200/75200.html', meta=meta_deepcopy)
-        meta_deepcopy = copy.deepcopy(meta)
-        yield scrapy.Request('http://www.jxsggzy.cn/web/jyxx/002006/002006001/3.html', meta=meta_deepcopy)
+        yield scrapy.Request('http://www.ccgp.gov.cn/cggg/dfgg/', meta=self.get_splash_meta())
+        yield scrapy.Request('http://www.bjrbj.gov.cn/csibiz/home/static/catalogs/catalog_75200/75200.html', meta=self.get_splash_meta())
+        yield scrapy.Request('http://www.jxsggzy.cn/web/jyxx/002006/002006001/3.html', meta=self.get_splash_meta())
 
 
     def parse(self, response):
@@ -63,8 +64,21 @@ class TestSpider(scrapy.Spider):
             elink = slink.root
             text = elink.text
             href = elink.get("href")
-            if not href or not text or len(text) <= 10:
+
+            if not href or not text:
                 continue
+            if text in ["下一页", "下页", "next"]:
+                print('next:', href, text)
+                # 2018-06-28 16:10:59 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://www.ccgp.gov.cn/cggg/dfgg/index_1.htm> (referer: http://www.ccgp.gov.cn/cggg/dfgg/)
+                # @TODO: anyway use it directly!?
+                req = response.follow(slink, callback=self.parse, errback=self.errback, meta=self.get_splash_meta())
+                #print(req.meta)
+                #req.meta.pop('splash' , None)
+                yield req
+                continue
+            if len(text) <= 10:
+                continue
+
             print(text, href)
             """安徽阜阳市加快推进养老服务体系建设 http://www.ccgp.gov.cn/gpsr/zhxx/df/201806/t20180626_10162269.htm
             联系我们 /contact.shtml
@@ -79,6 +93,7 @@ class TestSpider(scrapy.Spider):
 
     def content_parser(self, response):
         print(response.url, response.xpath('//title').extract())
+
 
 class MySpider(CrawlSpider):
     name = 'test1'
