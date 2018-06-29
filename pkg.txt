@@ -1,4 +1,7 @@
 # docker-machine if for docker in VM managment 
 docker-engine
 bash-completion
+docker run -p 8050:8050 scrapinghub/splash
+
 #PyQt5
+

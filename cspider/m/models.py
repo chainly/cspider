@@ -17,6 +17,7 @@ from pygments.lexers import get_lexer_by_name
 from pygments.formatters.html import HtmlFormatter
 from pygments import highlight
 
+
 class Snippet(models.Model):
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -84,6 +85,7 @@ class Keyword(models.Model):
 
     class Meta:
         ordering = ('word',)
+
 
 class Webpage(models.Model):
     updated = models.DateTimeField(auto_now=True)

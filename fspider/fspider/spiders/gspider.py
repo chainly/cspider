@@ -1,9 +1,13 @@
+import logging
 import copy
 import scrapy
 import scrapy_splash
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
-from fspider.models import Crawlpage, Webpage
+from fspider.models import Crawlpage, Webpage, Keyword
+
+log = logging.getLogger(__name__)
+
 
 class TestSpider(scrapy.Spider):
     name = 'test2'
@@ -33,6 +37,16 @@ class TestSpider(scrapy.Spider):
         }
     }
 
+    def __init__(self, **kwargs):
+        self.nextpage_keyword = kwargs.pop('nextpage_keyword', [])
+        super().__init__(**kwargs)
+
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        self = super().from_crawler(crawler, *args, **kwargs)
+        self.nextpage_keyword = self.get_nextpage_keyword()
+        return self
+
     def get_splash_meta(self, **kwargs):
         assert 'splash' not in kwargs, 'splash keyword not allowed!'
 
@@ -48,6 +62,12 @@ class TestSpider(scrapy.Spider):
         #yield scrapy.Request('http://www.jxsggzy.cn/web/jyxx/002006/002006001/3.html', meta=self.get_splash_meta())
         for item in Crawlpage.objects.all():
             yield scrapy.Request(item.site, meta=self.get_splash_meta(django_item=item))
+
+    def get_nextpage_keyword(self):
+        words = set()
+        for item in Keyword.objects.filter(types=1):
+            words.add(item.word)
+        return list(words)
 
     def parse(self, response):
         django_item = response.meta.get('django_item', None)
@@ -74,7 +94,7 @@ class TestSpider(scrapy.Spider):
 
             if not href or not text:
                 continue
-            if text in ["下一页", "下页", "next"]:
+            if text in self.nextpage_keyword:
                 print('next:', href, text)
                 # 2018-06-28 16:10:59 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://www.ccgp.gov.cn/cggg/dfgg/index_1.htm> (referer: http://www.ccgp.gov.cn/cggg/dfgg/)
                 # @TODO: anyway use it directly!?
@@ -98,6 +118,17 @@ class TestSpider(scrapy.Spider):
             #import sys
             #sys.exit()
             yield req
+
+    def if_crawled(self, url, **kwargs):
+        try:
+            item = Webpage.objects.get(site=url.strip())
+        except Webpage.DoesNotExist as err:
+            log.info(f'{url} already in Webpage: for {kwargs}', exc_info=err)
+            return True
+        except Exception as err:
+            log.error('Webpage query Exception occurred', exc_info=err)
+            return True
+        return False
 
     def errback(self, failure):
         print(failure.request.url, failure, failure.getTraceback())
