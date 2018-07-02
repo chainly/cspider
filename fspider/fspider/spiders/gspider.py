@@ -141,7 +141,7 @@ class TestSpider(scrapy.Spider):
             item = Webpage.objects.get(site=url.strip())
         except Webpage.DoesNotExist as err:
             # ? m.models.DoesNotExist: Webpage matching query does not exist.
-            log.info(f'{url} not in Webpage: for {kwargs}, analyse it!', exc_info=err)
+            log.info('%s not in Webpage: for %r, analyse it!' % (url, kwargs), exc_info=err)
             return False
         except Exception as err:
             log.error('Webpage query Exception occurred', exc_info=err)
