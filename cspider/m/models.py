@@ -1,3 +1,4 @@
+# coding: utf-8
 from django.db import models
 
 # Create your models here.
@@ -10,7 +11,11 @@ LANGUAGE_CHOICES = sorted([(item[1][0], item[0]) for item in LEXERS])
 STYLE_CHOICES = sorted((item, item) for item in get_all_styles())
 KEYWORD_CHOICES = sorted({
     0: '匹配关键字',
-    1: '下一页关键字'
+    1: '翻页关键字'
+    }.items())
+WEBPAGE_CHOICES = sorted({
+    0: '已抓取',
+    1: '匹配的',
     }.items())
 
 from pygments.lexers import get_lexer_by_name
@@ -57,7 +62,7 @@ class Crawlpage(models.Model):
     language = models.CharField(choices=LANGUAGE_CHOICES, default='python', max_length=100)
     style = models.CharField(choices=STYLE_CHOICES, default='friendly', max_length=100)
     status = models.SmallIntegerField(default=0)
-    owner = models.ForeignKey('auth.User', related_name='webpages', on_delete=models.SET_NULL, null=True, blank=True)
+    owner = models.ForeignKey('auth.User', related_name='crawlpage', on_delete=models.SET_NULL, null=True, blank=True)
     highlighted = models.TextField()
     
     class Meta:

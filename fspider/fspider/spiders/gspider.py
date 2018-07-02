@@ -1,3 +1,4 @@
+# coding: utf-8
 import logging
 import copy
 import scrapy
@@ -39,12 +40,14 @@ class TestSpider(scrapy.Spider):
 
     def __init__(self, **kwargs):
         self.nextpage_keyword = kwargs.pop('nextpage_keyword', [])
+        self.crawl_keyword = kwargs.pop('crawl_keyword', [])
         super().__init__(**kwargs)
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
         self = super().from_crawler(crawler, *args, **kwargs)
         self.nextpage_keyword = self.get_nextpage_keyword()
+        self.crawl_keyword = self.get_crawl_keyword()
         return self
 
     def get_splash_meta(self, **kwargs):
@@ -69,11 +72,17 @@ class TestSpider(scrapy.Spider):
             words.add(item.word)
         return list(words)
 
+    def get_crawl_keyword(self):
+        words = set()
+        for item in Keyword.objects.filter(types=0):
+            words.add(item.word)
+        return list(words)
+
     def parse(self, response):
         django_item = response.meta.get('django_item', None)
         #print(response.__dict__)
         # print( response.xpath('//a/text()').extract() , response.xpath('//a[@class="next"]'))
-        # print( response.xpath('//a[contains(./text(), "下一页")]').extract())
+        # print( response.xpath('//a[contains(./text(), "下一页)]').extract())
         for slink in response.xpath('//a'):
             #print(slink, slink.root, dir(slink.root), list(slink.root.keys()))
             """
@@ -90,10 +99,17 @@ class TestSpider(scrapy.Spider):
             """
             elink = slink.root
             text = elink.text
-            href = elink.get("href")
+            href = elink.get("href").strip()
 
             if not href or not text:
                 continue
+            
+            req = response.follow(slink, callback=self.parse, errback=self.errback)
+            
+            # done for this task
+            if self.if_crawled(req.url):
+                return
+            # next page
             if text in self.nextpage_keyword:
                 print('next:', href, text)
                 # 2018-06-28 16:10:59 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://www.ccgp.gov.cn/cggg/dfgg/index_1.htm> (referer: http://www.ccgp.gov.cn/cggg/dfgg/)
@@ -103,6 +119,7 @@ class TestSpider(scrapy.Spider):
                 #req.meta.pop('splash' , None)
                 yield req
                 continue
+            # ignore some innner link
             if len(text) <= 10:
                 continue
 
@@ -123,17 +140,20 @@ class TestSpider(scrapy.Spider):
         try:
             item = Webpage.objects.get(site=url.strip())
         except Webpage.DoesNotExist as err:
-            log.info(f'{url} already in Webpage: for {kwargs}', exc_info=err)
-            return True
+            # ? m.models.DoesNotExist: Webpage matching query does not exist.
+            log.info(f'{url} not in Webpage: for {kwargs}, analyse it!', exc_info=err)
+            return False
         except Exception as err:
             log.error('Webpage query Exception occurred', exc_info=err)
             return True
-        return False
+        else:
+            return True
 
     def errback(self, failure):
         print(failure.request.url, failure, failure.getTraceback())
 
     def content_parser(self, response):
+        """we may use restful API"""
         print(response.url, response.xpath('//title').extract())
         new = Webpage()
         new.site = response.url.strip()
@@ -141,6 +161,7 @@ class TestSpider(scrapy.Spider):
                 + response.xpath('//h1/text()').extract() \
                 + response.xpath('//h2/text()').extract()
         new.crawled = response.meta.get('django_item', None)
+        new.status = 1 if any([ k in str(new.title) for k in self.crawl_keyword]) else 0
         new.save()
 
 

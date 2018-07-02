@@ -1,6 +1,7 @@
 #pip install djangorestframework  -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
 django
 djangorestframework
+django-filter
 pygments
 coreapi
 
@@ -10,4 +11,4 @@ scrapy
 scrapy-splash
 splash
 # https://github.com/ghtmtt/DataPlotly/issues/47
-PyQt5==5.9
+#PyQt5==5.9

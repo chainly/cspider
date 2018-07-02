@@ -1,8 +1,6 @@
 import os
 import sys
-"""We 
-
-"""
+"""We may use restful API later!"""
 
 __all__ = (
     "Crawlpage",

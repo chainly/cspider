@@ -25,7 +25,7 @@ SECRET_KEY = '%a@#9w8*)xk&j^6l9qg1)j3@%yjk*gemh4(dm7&zpw2zz#v^uw'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    # https://github.com/carltongibson/django-filter/issues/562
+    'django_filters',
     'm',
 ]
 
@@ -134,5 +136,8 @@ STATIC_URL = '/static/'
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 10,
+    # https://blog.csdn.net/kuangshp128/article/details/78876254
+    # http://www.django-rest-framework.org/api-guide/filtering/
+    'DEFAULT_FILTER_BACKENDS': ('django_filters.rest_framework.DjangoFilterBackend',)
 }

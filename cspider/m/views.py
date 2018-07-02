@@ -1,3 +1,4 @@
+# coding: utf-8
 from django.shortcuts import render
 
 # Create your views here.
@@ -17,7 +18,7 @@ class SnippetList(generics.ListCreateAPIView):
 
 class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,
-                      IsOwnerOrReadOnly,)
+                          IsOwnerOrReadOnly,)
     queryset = Snippet.objects.all()
     serializer_class = SnippetSerializer
     
@@ -121,15 +122,22 @@ class CrawlpageViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
+
+from django_filters.rest_framework import DjangoFilterBackend
+
+
 class WebpageViewSet(viewsets.ModelViewSet):
     """all crawled page\n
     *WARNING*\n
     Also provide `truncate` action to truncate table
     """
-
     queryset = Webpage.objects.all()
     serializer_class = WebpageSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    # 使用过滤器 
+    filter_backends = (DjangoFilterBackend,)
+    # 定义需要使用过滤器的字段
+    filter_fields = ('id', 'status', 'crawled')    
     
     @action(detail=False, renderer_classes=[renderers.StaticHTMLRenderer])
     def truncate(self, request, *args, **kwargs):

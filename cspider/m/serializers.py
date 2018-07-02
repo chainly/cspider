@@ -56,8 +56,11 @@ class CrawlpageSerializer(serializers.ModelSerializer):
         #fields = ('id', 'site', 'code', 'status')
         exclude = ('highlighted',)
 
+from m.models import KEYWORD_CHOICES, WEBPAGE_CHOICES
 
 class WebpageSerializer(serializers.ModelSerializer):
+    crawled = serializers.CharField(source='crawled.site')
+    status = serializers.ChoiceField(choices=WEBPAGE_CHOICES)
 
     class Meta:
         model = Webpage
@@ -65,6 +68,7 @@ class WebpageSerializer(serializers.ModelSerializer):
 
 
 class KeywordSerializer(serializers.ModelSerializer):
+    types = serializers.ChoiceField(choices=KEYWORD_CHOICES)
 
     class Meta:
         model = Keyword
