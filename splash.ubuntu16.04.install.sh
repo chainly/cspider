@@ -73,5 +73,6 @@ pip3 install -r  requirement.txt
 nohup python3 manage.py runserver 0.0.0.0:80 >> django.log &
 
 # crontab
-#cd /root/cspider/fspider && scrapy crawl test2
-#scrapy crawl test2
+#systemctl enable cron
+#systemctl restart cron
+#*/10 * * * * cd /root/cspider/fspider && scrapy crawl test2 >> scrapy.log 2>&1 
