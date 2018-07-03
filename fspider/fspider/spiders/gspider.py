@@ -109,7 +109,8 @@ class TestSpider(scrapy.Spider):
             
             # done for this task
             if self.if_crawled(req.url):
-                return
+                # maybe some error in crawl next page, so we can try again!
+                continue
             # next page
             if text in self.nextpage_keyword:
                 print('next:', href.encode(coding), text.encode(coding))
