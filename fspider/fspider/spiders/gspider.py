@@ -121,6 +121,9 @@ class TestSpider(scrapy.Spider):
                 #req.meta.pop('splash' , None)
                 yield req
                 continue
+            #ignore pageations
+            if text.strip().isdigit():
+                continue
             # ignore some innner link
             if len(text) <= 10:
                 # save it, so no log more
