@@ -123,6 +123,13 @@ class TestSpider(scrapy.Spider):
                 continue
             # ignore some innner link
             if len(text) <= 10:
+                # save it, so no log more
+                new = Webpage()
+                new.site = req.url                
+                try:
+                    new.save()
+                except Exception:
+                    pass
                 continue
 
             print(text.encode(coding), href.encode(coding))
