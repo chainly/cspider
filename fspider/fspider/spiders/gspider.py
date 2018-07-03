@@ -125,7 +125,8 @@ class TestSpider(scrapy.Spider):
             if len(text) <= 10:
                 # save it, so no log more
                 new = Webpage()
-                new.site = req.url                
+                new.site = req.url
+                new.crawled = django_item
                 try:
                     new.save()
                 except Exception:
