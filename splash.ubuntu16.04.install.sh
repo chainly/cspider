@@ -58,13 +58,19 @@ sudo apt-get install git python-setuptools  python3-setuptools python-pip python
 sudo apt install python3-pyqt5 python3-pyqt5.qtwebkit xvfb openssl libssl-dev -y
 pip3 install splash
 
+# https://stackoverflow.com/questions/41408791/python-3-unicodeencodeerror-ascii-codec-cant-encode-characters
+# https://help.ubuntu.com/community/Locale
+locale charmap |grep -v 'UTF-8' && update-locale LANG=zh_CN.UTF-8 LC_ALL=zh_CN.UTF-8 && sudo locale-gen  # && echo  'logout && login' && exit 1
+#root@vpn:~# update-locale LANG=zh_CN.UTF-8 LC_ALL=zh_CN.UTF-8 
+#*** update-locale: Error: invalid locale settings:  LANG=zh_CN.UTF-8 LC_ALL=zh_CN.UTF-8
+# encode all output
 nohup python3 -m splash.server --port=8050 2>&1 >> splash.log &
 
 git clone https://github.com/chainly/cspider.git
 cd cspider
 pip3 install -r  requirement.txt
 
-nohup python3 manage.py runserver 0.0.0.0:8000 >> django.log &
+nohup python3 manage.py runserver 0.0.0.0:80 >> django.log &
 
 # crontab
 #cd /root/cspider/fspider && scrapy crawl test2

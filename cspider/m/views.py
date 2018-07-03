@@ -139,8 +139,11 @@ class WebpageViewSet(viewsets.ModelViewSet):
     # 定义需要使用过滤器的字段
     filter_fields = ('id', 'status', 'crawled')    
     
-    @action(detail=False, renderer_classes=[renderers.StaticHTMLRenderer])
+    @action(detail=False, renderer_classes=(renderers.StaticHTMLRenderer,), permission_classes = (permissions.IsAuthenticatedOrReadOnly,))
     def truncate(self, request, *args, **kwargs):
+        # @TODO: how to add permissions in action
+        #print(request.user)
+        assert str(request.user) != 'AnonymousUser', 'login!!!'
         return Response(repr(self.queryset.delete()))
 
 class KeywordViewSet(viewsets.ModelViewSet):

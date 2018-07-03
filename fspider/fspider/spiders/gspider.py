@@ -80,6 +80,7 @@ class TestSpider(scrapy.Spider):
 
     def parse(self, response):
         django_item = response.meta.get('django_item', None)
+        coding = getattr(response, 'encoding', 'utf-8')
         #print(response.__dict__)
         # print( response.xpath('//a/text()').extract() , response.xpath('//a[@class="next"]'))
         # print( response.xpath('//a[contains(./text(), "下一页)]').extract())
@@ -99,7 +100,7 @@ class TestSpider(scrapy.Spider):
             """
             elink = slink.root
             text = elink.text
-            href = elink.get("href").strip()
+            href = elink.get("href", '').strip()
 
             if not href or not text:
                 continue
@@ -111,7 +112,7 @@ class TestSpider(scrapy.Spider):
                 return
             # next page
             if text in self.nextpage_keyword:
-                print('next:', href, text)
+                print('next:', href.encode(coding), text.encode(coding))
                 # 2018-06-28 16:10:59 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://www.ccgp.gov.cn/cggg/dfgg/index_1.htm> (referer: http://www.ccgp.gov.cn/cggg/dfgg/)
                 # @TODO: anyway use it directly!?
                 req = response.follow(slink, callback=self.parse, errback=self.errback, meta=self.get_splash_meta(django_item=django_item))
@@ -123,7 +124,7 @@ class TestSpider(scrapy.Spider):
             if len(text) <= 10:
                 continue
 
-            print(text, href)
+            print(text.encode(coding), href.encode(coding))
             """安徽阜阳市加快推进养老服务体系建设 http://www.ccgp.gov.cn/gpsr/zhxx/df/201806/t20180626_10162269.htm
             联系我们 /contact.shtml
             意见反馈 mailto:feedback@ccgp.gov.cn
@@ -154,12 +155,13 @@ class TestSpider(scrapy.Spider):
 
     def content_parser(self, response):
         """we may use restful API"""
-        print(response.url, response.xpath('//title').extract())
+        coding = getattr(response, 'encoding', 'utf-8')        
+        print(response.url, response.xpath('//title').extract_first(default='').encode(coding))
         new = Webpage()
         new.site = response.url.strip()
-        new.title = response.xpath('//title/text()').extract() \
-                + response.xpath('//h1/text()').extract() \
-                + response.xpath('//h2/text()').extract()
+        new.title = response.xpath('//title/text()').extract_first(default='') \
+                + response.xpath('//h1/text()').extract_first(default='') \
+                + response.xpath('//h2/text()').extract_first(default='')
         new.crawled = response.meta.get('django_item', None)
         new.status = 1 if any([ k in str(new.title) for k in self.crawl_keyword]) else 0
         new.save()
