@@ -52,11 +52,11 @@ sudo apt-get install \
     software-properties-common -y
 
 sudo add-apt-repository ppa:git-core/ppa  -y
-sudo apt-get install git python-setuptools  python3-setuptools python-pip python3-pip python-dev -y
+sudo apt-get install lua git python-setuptools  python3-setuptools python-pip python3-pip python-dev -y
 # https://stackoverflow.com/questions/2922711/importerror-no-module-named-qtwebkit
 # https://askubuntu.com/questions/930998/how-to-install-pyqt5-in-xubuntu-16-04
 sudo apt install python3-pyqt5 python3-pyqt5.qtwebkit xvfb openssl libssl-dev -y
-pip3 install splash
+pip3 install lupa splash
 
 # https://stackoverflow.com/questions/41408791/python-3-unicodeencodeerror-ascii-codec-cant-encode-characters
 # https://help.ubuntu.com/community/Locale

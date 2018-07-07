@@ -26,18 +26,24 @@ function main(splash, args)
         -- find first three page
         -- @TODO: find a common way!
         i = 0
-        while (i < 3) do
+        results["links"] = {}
+
+        while (i <= 3) do
+          i = i + 1
           assert(a:mouse_click{})
           assert(splash:wait(5))
           local links = splash:select_all('a')
-          results["links"] = {}
-          for i, a in ipairs(links) do
-            txt = a.node.attributes.title or a.node.text()
-            results["links"][txt] = a.node.attributes.href
+          for i, a2 in ipairs(links) do
+            if a2.node.text() == splash.args.next then
+              a = a2
+            else
+              txt = a2.node.attributes.title or a.node.text()
+              results["links"][txt] = a2.node.attributes.href
+            end
           end
         end
         -- https://stackoverflow.com/questions/1758991/how-to-remove-a-lua-table-entry-by-its-key
-        results["links"][splash.args.next] = nil
+        -- results["links"][splash.args.next] = nil
     end
     
     results["entries"] = entries

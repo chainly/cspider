@@ -29,6 +29,9 @@ class TestSpider(scrapy.Spider):
                 # 'url' is prefilled from request url
                 # 'http_method' is set to 'POST' for POST requests
                 # 'body' is set to request body for POST requests
+                # wait to render
+                'wait': 3,
+                
             },
 
             # optional parameters
@@ -117,17 +120,9 @@ class TestSpider(scrapy.Spider):
                 elink = slink.root
                 text = elink.get('title', '') or elink.text or ''
                 href = elink.get("href", '').strip()
-                print(text.encode(coding), href)
+                
+            print(text.encode(coding), href)
 
-            if not href or not text:
-                continue
-            
-            req = response.follow(href, callback=self.parse, errback=self.errback)
-            
-            # done for this task
-            if self.if_crawled(req.url):
-                # maybe some error in crawl next page, so we can try again!
-                continue
             # next page
             if text in self.nextpage_keyword:
                 print('next:', href.encode(coding), text.encode(coding))
@@ -137,6 +132,7 @@ class TestSpider(scrapy.Spider):
                     meta["splash"]["args"]["lua_source"] = self.lua_source
                     meta["splash"]["args"]["next"] = text
                     meta["splash"]["endpoint"] = 'execute'
+                    meta["download_timeout"] = 60
                     req = response.follow('#', callback=self.parse, errback=self.errback, meta=meta, dont_filter=True)
                     #print(req.url)
                     yield req
@@ -148,6 +144,16 @@ class TestSpider(scrapy.Spider):
                     #req.meta.pop('splash' , None)
                     yield req
                     continue
+
+            if not href or not text:
+                continue
+            
+            req = response.follow(href, callback=self.parse, errback=self.errback)
+            
+            # done for this task, *after pagination*
+            if self.if_crawled(req.url):
+                # maybe some error in crawl next page, so we can try again!
+                continue
             
             #ignore pagination id
             if text.strip().isdigit():
@@ -170,7 +176,10 @@ class TestSpider(scrapy.Spider):
             意见反馈 mailto:feedback@ccgp.gov.cn
             """
             # *response.request.meta is response.meta*
-            req = response.follow(href, callback=self.content_parser, errback=self.errback, meta={"django_item": django_item})
+            # * some use api * ==> render all
+            meta=self.get_splash_meta(django_item=django_item)
+            meta["django_item"] = django_item
+            req = response.follow(href, callback=self.content_parser, errback=self.errback, meta=meta)
             # 301/302
             req.meta["__original_url"] = req.url
             #print(req.meta)
