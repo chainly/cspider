@@ -171,7 +171,8 @@ class TestSpider(scrapy.Spider):
             """
             # *response.request.meta is response.meta*
             req = response.follow(href, callback=self.content_parser, errback=self.errback, meta={"django_item": django_item})
-            #req.meta.pop('splash' , None)
+            # 301/302
+            req.meta["__original_url"] = req.url
             #print(req.meta)
             #import sys
             #sys.exit()
@@ -195,10 +196,11 @@ class TestSpider(scrapy.Spider):
 
     def content_parser(self, response):
         """we may use restful API"""
+        original_url = response.meta.get("__original_url", '')
         coding = getattr(response, 'encoding', 'utf-8')        
         print(response.url, response.xpath('//title').extract_first(default='').encode(coding))
         new = Webpage()
-        new.site = response.url.strip()
+        new.site = original_url or response.url.strip()
         new.title = response.xpath('//title/text()').extract_first(default='') \
             + ' ' \
             + response.xpath('//h1/text()').extract_first(default='') \
