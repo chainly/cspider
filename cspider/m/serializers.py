@@ -10,7 +10,12 @@ class SnippetSerializer(serializers.Serializer):
     language = serializers.ChoiceField(choices=LANGUAGE_CHOICES, default='python')
     style = serializers.ChoiceField(choices=STYLE_CHOICES, default='friendly')
     owner = serializers.ReadOnlyField(source='owner.username')
-    
+    _link = serializers.HyperlinkedIdentityField(
+            many=False,
+            read_only=True,
+            view_name='snippet-detail',
+            lookup_field='pk',
+        )     
 
     def create(self, validated_data):
         """
@@ -29,13 +34,24 @@ class SnippetSerializer(serializers.Serializer):
         instance.style = validated_data.get('style', instance.style)
         instance.save()
         return instance
-    
+
+    class Meta:
+        model = Snippet
+        #fields = ('id', 'username', 'password', 'snippets')
+        exclude = ()
+   
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import password_changed
 
 class UserSerializer(serializers.ModelSerializer):
     snippets = serializers.PrimaryKeyRelatedField(many=True, queryset=Snippet.objects.all())
-
+    _link = serializers.HyperlinkedIdentityField(
+            many=False,
+            read_only=True,
+            view_name='user-detail',
+            lookup_field='pk',
+        )    
+    
     def update(self, instance, validated_data):
         """Only change password in PUT method"""
         password_changed(validated_data.password, instance)
@@ -44,32 +60,53 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         #fields = ('id', 'username', 'password', 'snippets')
-        fields = '__all__'
+        exclude = ()
+
         
 from m.models import Webpage, Crawlpage, Keyword
 
 class CrawlpageSerializer(serializers.ModelSerializer):
-
+    _link = serializers.HyperlinkedIdentityField(
+            many=False,
+            read_only=True,
+            view_name='crawlpage-detail',
+            lookup_field='pk',
+        )    
+    
     class Meta:
         model = Crawlpage
         #fields = '__all__'
         #fields = ('id', 'site', 'code', 'status')
-        exclude = ('highlighted',)
+        exclude = ()
 
 from m.models import KEYWORD_CHOICES, WEBPAGE_CHOICES
 
 class WebpageSerializer(serializers.ModelSerializer):
     crawled = serializers.CharField(source='crawled.site')
     status = serializers.ChoiceField(choices=WEBPAGE_CHOICES)
+    _link = serializers.HyperlinkedIdentityField(
+            many=False,
+            read_only=True,
+            view_name='webpage-detail',
+            lookup_field='pk',
+        )    
 
     class Meta:
         model = Webpage
-        fields = '__all__'
+        exclude = ()
 
 
 class KeywordSerializer(serializers.ModelSerializer):
-    types = serializers.ChoiceField(choices=KEYWORD_CHOICES)
-
+    #types = serializers.ChoiceField(choices=KEYWORD_CHOICES)
+    # http://www.django-rest-framework.org/api-guide/relations/#hyperlinkedidentityfield
+    _link = serializers.HyperlinkedIdentityField(
+            many=False,
+            read_only=True,
+            view_name='keyword-detail',
+            lookup_field='pk',
+        )
+    
     class Meta:
         model = Keyword
-        fields = '__all__'
+        #fields = ('__all__', '_link')
+        exclude = ()

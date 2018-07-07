@@ -1,4 +1,7 @@
 # coding: utf-8
+import os
+import json
+import base64
 import logging
 import copy
 import scrapy
@@ -6,8 +9,10 @@ import scrapy_splash
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
 from fspider.models import Crawlpage, Webpage, Keyword
+from scrapy_splash.response import SplashJsonResponse, SplashTextResponse
 
 log = logging.getLogger(__name__)
+pwd = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
 
 class TestSpider(scrapy.Spider):
@@ -37,6 +42,9 @@ class TestSpider(scrapy.Spider):
             'magic_response': False,  # optional, default is True
         }
     }
+    
+    lua_source = open(os.path.join(pwd, 'pagination.lua'), encoding='utf-8').read()
+
 
     def __init__(self, **kwargs):
         self.nextpage_keyword = kwargs.pop('nextpage_keyword', [])
@@ -63,7 +71,7 @@ class TestSpider(scrapy.Spider):
         #yield scrapy.Request('http://www.ccgp.gov.cn/cggg/dfgg/', meta=self.get_splash_meta())
         #yield scrapy.Request('http://www.bjrbj.gov.cn/csibiz/home/static/catalogs/catalog_75200/75200.html', meta=self.get_splash_meta())
         #yield scrapy.Request('http://www.jxsggzy.cn/web/jyxx/002006/002006001/3.html', meta=self.get_splash_meta())
-        for item in Crawlpage.objects.all():
+        for item in Crawlpage.objects.filter(status=0):
             yield scrapy.Request(item.site, meta=self.get_splash_meta(django_item=item))
 
     def get_nextpage_keyword(self):
@@ -84,7 +92,12 @@ class TestSpider(scrapy.Spider):
         #print(response.__dict__)
         # print( response.xpath('//a/text()').extract() , response.xpath('//a[@class="next"]'))
         # print( response.xpath('//a[contains(./text(), "下一页)]').extract())
-        for slink in response.xpath('//a'):
+        link_items = ()
+        if isinstance(response, SplashJsonResponse):
+            link_items = json.loads(response.text)["links"].items()
+        else:
+            link_items = response.xpath('//a') 
+        for slink in link_items:
             #print(slink, slink.root, dir(slink.root), list(slink.root.keys()))
             """
             <Selector xpath='//a' data='<a href="#">002</a>'>
@@ -98,14 +111,18 @@ class TestSpider(scrapy.Spider):
             'tag', 'tail', 'text', 'text_content', 'values', 'xpath']
             ['href', 'class']
             """
-            elink = slink.root
-            text = elink.text
-            href = elink.get("href", '').strip()
+            if isinstance(slink, tuple):
+                text, href = slink
+            else:
+                elink = slink.root
+                text = elink.get('title', '') or elink.text or ''
+                href = elink.get("href", '').strip()
+                print(text.encode(coding), href)
 
             if not href or not text:
                 continue
             
-            req = response.follow(slink, callback=self.parse, errback=self.errback)
+            req = response.follow(href, callback=self.parse, errback=self.errback)
             
             # done for this task
             if self.if_crawled(req.url):
@@ -114,14 +131,25 @@ class TestSpider(scrapy.Spider):
             # next page
             if text in self.nextpage_keyword:
                 print('next:', href.encode(coding), text.encode(coding))
-                # 2018-06-28 16:10:59 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://www.ccgp.gov.cn/cggg/dfgg/index_1.htm> (referer: http://www.ccgp.gov.cn/cggg/dfgg/)
-                # @TODO: anyway use it directly!?
-                req = response.follow(slink, callback=self.parse, errback=self.errback, meta=self.get_splash_meta(django_item=django_item))
-                #print(req.meta)
-                #req.meta.pop('splash' , None)
-                yield req
-                continue
-            #ignore pageations
+                # pagination with js                
+                if href in ['', ]:
+                    meta=self.get_splash_meta(django_item=django_item)
+                    meta["splash"]["args"]["lua_source"] = self.lua_source
+                    meta["splash"]["args"]["next"] = text
+                    meta["splash"]["endpoint"] = 'execute'
+                    req = response.follow('#', callback=self.parse, errback=self.errback, meta=meta, dont_filter=True)
+                    #print(req.url)
+                    yield req
+                else:
+                    # 2018-06-28 16:10:59 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://www.ccgp.gov.cn/cggg/dfgg/index_1.htm> (referer: http://www.ccgp.gov.cn/cggg/dfgg/)
+                    # @TODO: anyway use it directly!?
+                    req = response.follow(href, callback=self.parse, errback=self.errback, meta=self.get_splash_meta(django_item=django_item))
+                    #print(req.meta)
+                    #req.meta.pop('splash' , None)
+                    yield req
+                    continue
+            
+            #ignore pagination id
             if text.strip().isdigit():
                 continue
             # ignore some innner link
@@ -142,7 +170,7 @@ class TestSpider(scrapy.Spider):
             意见反馈 mailto:feedback@ccgp.gov.cn
             """
             # *response.request.meta is response.meta*
-            req = response.follow(slink, callback=self.content_parser, errback=self.errback, meta={"django_item": django_item})
+            req = response.follow(href, callback=self.content_parser, errback=self.errback, meta={"django_item": django_item})
             #req.meta.pop('splash' , None)
             #print(req.meta)
             #import sys
@@ -172,11 +200,16 @@ class TestSpider(scrapy.Spider):
         new = Webpage()
         new.site = response.url.strip()
         new.title = response.xpath('//title/text()').extract_first(default='') \
-                + response.xpath('//h1/text()').extract_first(default='') \
-                + response.xpath('//h2/text()').extract_first(default='')
+            + ' ' \
+            + response.xpath('//h1/text()').extract_first(default='') \
+            + ' ' \
+            + response.xpath('//h2/text()').extract_first(default='')
         new.crawled = response.meta.get('django_item', None)
         new.status = 1 if any([ k in str(new.title) for k in self.crawl_keyword]) else 0
-        new.save()
+        try:
+            new.save()
+        except Exception as err:
+            log.error('save failed', exc_info=err)
 
 
 class MySpider(CrawlSpider):
