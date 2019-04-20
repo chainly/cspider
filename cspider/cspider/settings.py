@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     # https://github.com/carltongibson/django-filter/issues/562
     'django_filters',
     'm',
+    't',
 ]
 
 MIDDLEWARE = [
