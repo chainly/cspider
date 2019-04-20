@@ -31,7 +31,7 @@ function main(splash, args)
         while (i <= 3) do
           i = i + 1
           assert(a:mouse_click{})
-          assert(splash:wait(5))
+          assert(splash:wait(3))
           local links = splash:select_all('a')
           for i, a2 in ipairs(links) do
             if a2.node.text() == splash.args.next then
